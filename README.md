@@ -36,4 +36,7 @@ instructions_process_greenspace() #call instructions for a particular function
 One additional function exists which describes each of the landscape metrics calculated within the *process_greenspace* script, called *define_landscape_metrics*, which is used similar to to any of the instuctions functions.
 
 
+I cannot legally publish the raw maps that were used to create the historic park shapefiles, as some are still protected by copyright law. If you need to obtain the original maps, please refer to the Supplimental Material 1 (on journal website) for a list of maps and their digital or physical location. If you use the historic green space data compiled for this project in a future analysis, I recomend using the data as a raster rather than a polygon.
+
+---
 *Direct correspondence to herrerawildlife@gmail.com*
