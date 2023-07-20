@@ -1,0 +1,914 @@
+#This script contains all custom functions required for the analysis of changes in historic park systems and species diversity.
+
+message(paste("\n","Welcome!", "\n","\n", "If you have not used these functions before, run 'instructions_FUNCTION OF INTEREST()' for help.","\n", "Please remember that theses functions were not written with universal functionality in mind and may require editing to fit your needs.", sep="")) #prints opening message
+
+instructions_process_greenspace <- function(){ #start instructions function
+  open1 <- "This function was originally built for to aid in analyzing the change of urban park systems over time. While they may serve other uses, please remember that they were not written with universal functionality in mind."
+  open2 <- "Before you begin, make sure you have all of your shapefiles saved as polygons. Files should be named logically and MUST CONTAIN A SAMPLE YEAR! For instance, a polygon depicting DC's parks in 2022 might be named 'DC_2022.'"
+  open3 <- "This function will only work if all polygons are stored in the same folder. The function will attempt to analyze all shapefiles contained in the folder, unless one of them is identified as the 'city.file,' in which case it will be utilized for building rasters, but will not be itself analyzed."
+  open4 <- "The following objects are required for functionality:"
+  open5 <- "city.file: A shapefile (polygon) of the study area of interest - assumed to be a city footprint."
+  open6 <- "data.path: A path to the folder which contains the polygons you wish to analyze - assumed to be park system polgyons from the same city over multiple years."
+  open7 <- "city.name: The name which you will use to denote your study area. Does not need to match your filenames, but will be used to name your newly created rasters."
+  open8 <- "resolution: The desired raster resolution in meters. For example, a resolution of 100 would yield a raster in which each cell was 100x100 m."
+  
+  message(paste("\n","\n",open1,"\n","\n",open2,"\n","\n",open3,"\n","\n","\n",open4,"\n","\n",open5,"\n","\n",open6,"\n","\n",open7,"\n","\n",open8, sep=""))
+}
+
+process_greenspace <- function(city.file, data.path, city.name, resolution){ #Initiate function
+  ######################
+  #Triggering error messages
+  if(!(grepl(".shp",city.file,ignore.case = TRUE))) stop("City shapefile (city.file) must be a valid file path to an existing polygon shapefile representing municipal boundary.") #Throws an error if city boundary is not filetype ".shp"
+  if(grepl(".shp", data.path, ignore.case = TRUE)) stop("A valid folder path is required for data.path. If you wish to process a single file, create a new folder to house said file.") #Throws an error if data is a single file, but function is set to process multiple
+  
+  ######################
+  #Load libraries
+  if (!require(sf)) message("Installing required package 'sf.'")
+  if (!require(sf)) install.packages('sf') #Does user have the package downloaded? If so move on, if not, download.
+  library(sf) #load library
+  
+  if (!require(raster)) message("Installing required package 'raster.'")
+  if (!require(raster)) install.packages('raster') #Does user have the package downloaded? If so move on, if not, download.
+  library(raster) #load library
+  
+  if (!require(landscapemetrics)) message("Installing required package 'landscapemetrics.'")
+  if (!require(landscapemetrics)) install.packages('landscapemetrics') #Does user have the package downloaded? If so move on, if not, download.
+  library(landscapemetrics) #load library
+  
+  ######################
+  message("STATUS REPORT: Reading in data files")
+  
+  #Read in city footprint
+  municipal <- st_read(dsn=city.file, quiet = TRUE)
+  
+  #Create vector of file names in the given folder that are shapefiles
+  layer_files <- list.files(path = data.path,
+                            pattern = "*[.shp]$", #filename ends in ".shp"
+                            full.names = TRUE)
+  
+  layer_files <- subset(layer_files, !(layer_files %in% city.file)) #removes the municipal file from the vector of files to read into R as data layers
+  
+  layer_years <- unlist(regmatches(layer_files, gregexpr("[[:digit:]]+", layer_files))) #Makes a vector of the years represented in each file in layer_files. This will be used to name each file.
+  
+  #Read in the files remaining in layer_files and clean them up
+  for(i in 1:length(layer_files)) {          # Head of for-loop
+    
+    file.name <- paste0(city.name,"_",layer_years[i])
+    
+    assign(file.name,              # names dataframes that will be read in
+           st_read(layer_files[i], quiet = TRUE))      #Determines which dataframes are read in (for each instance (i) in layer_files)
+  }
+  
+  layer_list <- Filter(function(x) is(x, "sf"), mget(ls())) #Creates a list containing each data layer
+  
+  layer_list["municipal"] = NULL #removes municipal from the list for processing
+  
+  #Set all CRS to be the same as the reference layer
+  municipal <- st_transform(municipal, crs = st_crs(5070)) #Change the coordinate reference system to Albers equal area conic (contiguous USA)
+  layer_list <- lapply(layer_list, function(x) st_transform(x, 5070)) #Change coordinate reference to Albers equal area conic (contiguous USA) for all the polygon layers in the list
+  
+  ######################
+  #Create a grid for raster to be based on
+  
+  message("STATUS REPORT: Building base raster")
+  
+  #Find extents of the municipal shapefile
+  municipal.x.min <- extent(municipal)[1]
+  municipal.x.max <- extent(municipal)[2]
+  municipal.y.min <- extent(municipal)[3]
+  municipal.y.max <- extent(municipal)[4]
+  
+  #Use shapefile extents and resolution to determine how many cells are needed in the raster
+  raster.height <- ceiling((municipal.y.max - municipal.y.min)/resolution)
+  raster.width <- ceiling((municipal.x.max - municipal.x.min)/resolution)
+  
+  #Note that the specified resolution will not be followed since we are specifying the extent and number of rows.
+  #The extent must be changed to exactly fit the number of rows and columns special under the desired resolution.
+  #If not, cells will be different sizes across cities and ruin the comparison.
+  
+  municipal.x.max <- municipal.x.min + (raster.width*resolution) #adjust width to maintain resolution
+  municipal.y.max <- municipal.y.min + (raster.height*resolution) #adjust width to maintain resolution
+  
+  #Create a raster that acts as the base for all following rasters
+  base.raster <- raster(xmn = municipal.x.min, #set extent
+                        xmx = municipal.x.max, #set extent
+                        ymn = municipal.y.min, #set extent
+                        ymx = municipal.y.max, #set extent
+                        ncol = raster.width,
+                        nrow = raster.height)
+  
+  projection(base.raster) <- st_transform(municipal, crs = st_crs(5070)) #Change the coordinate reference system to Albers equal area conic (contiguous USA)
+  
+  #Create a municipal raster to trim each park raster
+  municipal.raster <- rasterize(x = municipal, #polygon layer to base raster value on
+                                y = base.raster, #base raster to construct new raster off of
+                                field = 1, #assign all raster cells that overlap with a polygon the value of 1
+                                background = NA, #assign all raster cells that do not overlap with a polygon the value of 0
+                                fun = min) #in each cell, report the lowest value found within the cell (0 or 1)
+  
+  #Create raster list to save park rasters to
+  raster_list <- list()
+  
+  ######################
+  #Create raster for each year
+  
+  message("STATUS REPORT: Converting polygons to rasters")
+  
+  build.raster <- function(x){ #begin sub-function
+    
+    park.poly <- st_transform(x, crs = st_crs(5070)) #Change the coordinate reference system to Albers equal area conic (contiguous USA)
+    
+    park.raster <- rasterize(x = x, #polygon layer to base raster value on
+                             y = base.raster, #base raster to construct new raster off of
+                             field = 1, #assign all raster cells that overlap with a polygon the value of 1
+                             background = 0, #assign all raster cells that do not overlap with a polygon the value of 0
+                             fun = min, #in each cell, report the lowest value found within the cell (0 or 1)
+    )
+    
+    #Clip raster to municipal shape
+    park.raster <- mask(x = park.raster, #From the raster 'park.raster'...
+                        mask = municipal.raster) #remove any cell which has a value of 'NA' in 'municipal raster'
+    
+    raster_list <<- c(raster_list, park.raster) #Add this raster to the previously created list of rasters
+    
+  } #end sub-function
+  
+  lapply(layer_list, build.raster) #apply the above function to the list of layers, which saves the rasters to a new list
+  
+  raster.names <- paste(city.name, layer_years, sep="_") #Create a vector of names for each raster
+  
+  names(raster_list) <- raster.names #renames the rasters within list
+  
+  ######################
+  #Save rasters for each year
+  
+  park_raster_list <<- as.list(raster_list) #Saving raster list to global environment
+  park_raster_stack <<- stack(raster_list) #combines all rasters in 'raster_list' into a raster stack
+  
+  
+  ######################
+  #Calculate landscape metrics
+  
+  message("STATUS REPORT: Calculating landscape metrics for each file")
+  
+  build.attributes <- function(x) { #start sub-function
+    
+    count.df <- as.data.frame(freq(x)) #create temporary dataframe describing the number of each cell value for raster layer
+    
+    n.cell.park <- as.numeric(count.df[count.df$value %in% "1", "count"]) #Returns the number of cells whose value is 1
+    n.cell.total <- as.numeric(count.df[count.df$value %in% "1", "count"]) + as.numeric(count.df[count.df$value %in% "0", "count"])
+    
+    total.park.area <- n.cell.park*(resolution*resolution) #Calculate the square meters of park space based on raster resolution
+    
+    percent.park.area <- (n.cell.park / n.cell.total) *100
+    
+    mean.park.area.df <- lsm_c_area_mn(x, directions = 8) #Calculate the average park area
+    mean.park.area <- as.numeric(mean.park.area.df[mean.park.area.df$class %in% "1", "value"]) #isolates to just the value for park space, not non-park space
+    
+    mean.park.area.sd.df <- lsm_c_area_sd(x, directions = 8) #Calculate the standard deviation for average park area
+    mean.park.area.sd <- as.numeric(mean.park.area.sd.df[mean.park.area.sd.df$class %in% "1", "value"]) #isolates to just the value for park space, not non-park space
+    
+    ratio.df <- as.data.frame(lsm_c_para_mn(x, directions = 8)) #calculates mean edge-interior ratio and returns values as a dataframe
+    park.ratio <- as.numeric(ratio.df[ratio.df$class %in% "1", "value"]) #isolates to just the ratio for park space, not non-park space
+    
+    ratio.sd.df <- lsm_c_para_sd(x, directions = 8) #calculate standard devation of mean edge interior ratio
+    park.ratio.sd <- as.numeric(ratio.sd.df[ratio.sd.df$class %in% "1", "value"]) #isolates to just the ratio for park space, not non-park space
+    
+    clumpy.index.df <- lsm_c_clumpy(x) #calculate clumpy index
+    clumpy.index <- as.numeric(clumpy.index.df[clumpy.index.df$class %in% "1", "value"]) #isolates to just the value for park space, not non-park space
+    
+    nearest.df <- lsm_p_enn(x, directions = 8, verbose = FALSE) #calculate nearest distance between each patch in question, and its closest neighbor
+    nearest.df <- nearest.df[nearest.df$class %in% "1", ] #remove values for non-park space
+    nearest.mean <- mean(nearest.df$value) #mean of nearest neighbors
+    nearest.sd <- sd(nearest.df$value) #standard deviation of nearest neighbors
+    
+    mesh.index <- lsm_c_mesh(landscape = x, #calculates effective mesh size
+                             directions = 8) #tells R to use queen's case, not rook's
+    mesh.index <- mesh.index[mesh.index$class %in% "1", "value"] #isolates value to that of parks, not parks and empty
+    mesh.index <- as.numeric(mesh.index) #converts mesh size to a number
+    mesh.index <- mesh.index * 10000 #converts mesh size from hectares to square meters (for consistency)
+    
+    #Assemble landscape metrics into a data frame
+    metrics <- data.frame(city = city.name,
+                          sum_park_area = total.park.area,
+                          prcnt_park_area = percent.park.area,
+                          mean_park_area = mean.park.area,
+                          sd_mean_park_area = mean.park.area.sd,
+                          mean_park_EIratio = park.ratio,
+                          sd_mean_park_EIratio = park.ratio.sd,
+                          park_clumpy = clumpy.index,
+                          mean_nearest_park = nearest.mean,
+                          sd_mean_nearest_park = nearest.sd,
+                          mesh.size = mesh.index)
+    
+    #Data frame is assembled with rownames being the title of each object in the list.
+    
+  } #end sub-function
+  
+  metrics.df <- lapply(raster_list, build.attributes) #apply sub-function to list of rasters
+  park_metrics <- do.call("rbind", metrics.df) #combine data frames with results into a single frame
+  
+  #Clean up park metrics data frame
+  park_metrics$rowname <- rownames(park_metrics) #Create column with rowname
+  park_metrics$year_raw <- substr(park_metrics$rowname, nchar(park_metrics$rowname)-3, nchar(park_metrics$rowname)) #Pulls sample year from object name (last 4 characters)
+  park_metrics$sample.year.round.head <- substr(park_metrics$year_raw,0,3) #first three values of sample year. To be left alone.
+  park_metrics$sample.year.rounded.tail <- substr(park_metrics$year_raw,4,4) #gets last value in year, which will be what is rounded
+  park_metrics$sample.year.rounded.tail <- ifelse(as.numeric(park_metrics$sample.year.rounded.tail) <= 4, "0", "5") #Rounds last value to appropriate age class
+  park_metrics$year_rounded <- paste(park_metrics$sample.year.round.head, park_metrics$sample.year.rounded.tail, sep="") #Combines rounded year head and tail into single year
+  
+  park_metrics <<- park_metrics[,c("city", "year_rounded", "year_raw", "sum_park_area", "prcnt_park_area", "mean_park_area", "sd_mean_park_area", "mean_park_EIratio", "sd_mean_park_EIratio", "park_clumpy", "mean_nearest_park", "sd_mean_nearest_park", "mesh.size")] #Save metrics data frame to environment
+  
+  ######################
+  #Sign off message
+  
+  message(paste("\n","Process is complete! See 'park_raster_list,' 'park_raster_stack,' and 'park_metrics' in global environment.","\n","\n", "For help interpreting park metrics, run 'define_landscape_metrics()'", "\n","\n", "Remember to rename your dataframe if you wish to re-run this function on data from a different city.", sep=""))
+  plot(park_raster_stack)
+}
+
+
+define_landscape_metrics <- function(){
+  
+  #Craft message
+  caveat <- "Measurments will change with varying resolutions. Distance and area are reported in meters and square meters, respectively."
+  line1 <- "sum_park_area: Sum of area of all raster cells which overlapped the input park polygon."
+  line2 <- "prcnt_park_area: Proportion of raster cells within municipal limits that overlapped park polygon (scale: 0 - 100%)."
+  line3 <- "mean_park_area: Average size of each park area (aka average patch size)."
+  line4 <- "sd_mean_park_area: Standard deviation of mean_park_area."
+  line5 <- "mean_park_EIratio: Mean edge-interior ratio of parks. Lower values indcate less complexity in park shapes, whereas higher values indicate higher complexity and greater potential for edge effect."
+  line6 <- "sd_mean_park_EIratio: Standard deviation of mean_park_EIratio."
+  line7 <- "park_clumpy: Clumpiness index of collective park system. -1 indicates patches are distributed to not be clumped; 0 indicates random distribution; 1 indicates patches are clumped."
+  line8 <- "mean_nearest_park: Mean nearest neighbor between parks. (Euclidian) Distance is measured from edge to edge, not park centers."
+  line9 <- "sd_mean_nearest_park: Standard deviation of mean_nearest_park."
+  line10 <- "mesh.size: Value proportional to the probability of two randomly selected points being connected in the landscape. The value is proportional to this probability in that it is probability multiplied by study area, which produces a spatial metric in the units of the projection (in this case, meters). Smaller values indicate higher degrees of fragmentation, since fragmented landscapes yield lower probabilities of points being connected."
+  
+  #String it together and present it
+  message(paste(caveat, "\n","\n", line1, "\n","\n", line2, "\n","\n", line3, "\n","\n", line4, "\n","\n", line5, "\n","\n", line6, "\n","\n", line7, "\n","\n", line8, "\n","\n", line9,"\n","\n", line10, sep=""))
+}
+
+
+clean_sppNames <- function(survey){
+  
+  #Error messages to make sure the user has formatted the data correctly (this function was built specifically for my data, not for others so is not flexible)
+  if(!colnames(survey)[1] %in% "common.name"){stop(paste("\n","The first column must be named 'common.name' ... More info in: instructions_clean_sppNames()", sep=""))}
+  if(!colnames(survey)[2] %in% "species.name"){stop(paste("\n","The first column must be named 'species.name' ... More info in: instructions_clean_sppNames()", sep=""))}
+  
+  #Assuming df's are properly formatted, continue working
+  df <- survey #temporarily rename the dataset for internal ease
+  df.names <- as.vector(colnames(df)) #save column names to reapply
+  
+  #Pull data for reports (part 1)
+  vect.inadequate.sp <- as.vector(df[grep(" sp.", df[,"species.name"], fixed = TRUE),"species.name" ]) #create vector of species which are not identified to species prior to their removal
+  vect.inadequate.group <- as.vector(df[grep("*Group", df[,"species.name"]),"species.name" ]) #create vector of species which are identified to group prior to their removal
+  vect.inadequate.hybrid <- as.vector(df[grep("* x ", df[,"species.name"]),"species.name" ]) #create vector of species which are hybrids prior to their removal
+  
+  #Remove non-specific ID's (if such a condition is present)
+  if(length(grep(" sp.", df[,"species.name"], fixed = TRUE)) > 0) df <- df[-grep(" sp.", df[,"species.name"], fixed = TRUE),] #remove all rows which are not identified to species (ends in "sp.")
+  if(length(grep("*Group", df[,"species.name"])) > 0) df <- df[-grep("*Group", df[,"species.name"]),] #remove all rows which are not identified to species (says species are part of a group)
+  if(length(grep("* x ", df[,"species.name"])) > 0) df <- df[-grep("* x ", df[,"species.name"]),] #remove all rows which contain hybrids (says species1 x species2)
+  
+  #Remove sub-species classifications
+  df.split <- strsplit(df$species.name, split = " ") #create a list of vectors the length of species entries. Each object in each vector is a word in the species name
+  
+  thin.names <- function(x){ #begin sub-function
+    paste(x[1],x[2], sep=" ") #paste first and second word of species name together
+  } #end sub-function
+  
+  df.split <- lapply(df.split, thin.names) #apply the above function to the list
+  df.split <- do.call("rbind", df.split) #Collapse the list to a vector
+  df.split <- as.vector(df.split) #convert df.split to a vector to overwrite original species name column
+  
+  df$species.name <- df.split #overwrite original species name column
+  
+  #Remove final species that are not ID'ed to species (not done earlier because some sub-classes have slash but not actual sp name)
+  if(length(grep("*/", df[,"species.name"])) > 0) df <- df[-grep("/", df[,"species.name"]),] #remove all rows which are not identified to species (says a species is this/that)
+  
+  #Pull data for reports (part 2)
+  vect.inadequate.slash <- as.vector(df[grep("*/", df[,"species.name"]),"species.name" ]) #create vector of species which are not identified to species prior to their removal
+  table.df <- as.data.frame(table(df$species.name)) #create table of how many times each species name is used
+  table.df <- subset(table.df, table.df$Freq > 1) #subset the table to only species names used more than once
+  vect.subspecies <- as.vector(table.df$Var1)
+  
+  #Combine records for subspecies which are now simply labelled as the same species
+  df.split <- split(df, df$species.name) #create a list of data frames where each data frame is unique to a species. Most df's will have only one row, but species which had subspecies recorded will have 1+ rows
+  
+  
+  collapse.spp <- function(x) { #begin sub-function
+    
+    temp.names <- as.vector(names(x)) #save names to reapply later
+    spp.info <- as.data.frame(x[1,c("common.name", "species.name")]) #save spp info to add back in at the end
+    
+    x <- x[,-(which(colnames(x) %in% c("common.name", "species.name")))] #remove spp info for processing
+    
+    x <- as.data.frame(t(x)) #flipping df to make it easier to work with and enable row sums
+    
+    x$sum <- rowSums(x) #create a new column and populate it with the number of obs of each species
+    
+    x <- as.data.frame(x$sum) #replace 'x' with sums of each species
+    
+    x <- as.data.frame(t(x)) #flip back to original orientation
+    
+    combined <- cbind(spp.info, x) #add species info back to the processed species counts
+    
+    names(combined) <- temp.names #rename columns
+    
+    combined #leaving here so R knows what to take
+    
+  } #end sub-function
+  
+  df.split <- lapply(df.split, collapse.spp) #apply the above function to the split list
+  df.split <- do.call("rbind", df.split) #combine all data frames into a single data frame
+  
+  df <- df.split #overwrite 'df' with new data frame that has collapsed species observations
+  names(df) <- df.names #ensure that column names are intact before returning data frame to environment
+  
+  #Create report
+  vect.reject <- c(vect.inadequate.group, vect.inadequate.hybrid, vect.inadequate.slash, vect.inadequate.sp) #combine all inadequate records for printing
+  n.reject <- length(vect.reject) #determine how many inadequate species were removed
+  text.reject <- as.character(paste(vect.reject, collapse = ", ")) #force rejected species into a text string for message
+  text.subspecies <- as.character(paste(vect.subspecies, collapse = ", "))
+  
+  message(paste("Process Complete!", 
+                "\n","\n",
+                n.reject, " species were removed due to inadequate identification, including: ", text.reject, 
+                "\n","\n",
+                length(vect.subspecies), " species now consist(s) of records from 1 or more subspecies, including: ", text.subspecies,
+                sep=""))
+  
+  df #leaving this here so R knows what to keep
+} #end function
+
+instructions_clean_sppNames <- function(){ #start instructions function
+  open1 <- "This function was originally built for to aid in analyzing the change of biodiversity over time. While they may serve other uses, please remember that they were not written with universal functionality in mind."
+  open2 <- "This function removes species from the dataset which are not identified to species, and combines data from subspecies such that the 'parent' species absorbs data from subspecies and subspecies themselves are removed."
+  open3 <- "Before you begin, make sure your data is structured such that each row is a species and each column is a survey (year), except the first two columns."
+  open4 <- "The first two columns MUST be 'common.name' and 'species.name'. Common names can be dummy data, but species names must be accurate."
+  open5 <- "The following objects are required for functionality:"
+  open6 <- "survey: A data frame where each row is a species, and each column is a survey (year), except for the first two columns (see above)."
+  
+  
+  message(paste("\n","\n",open1,"\n","\n",open2,"\n","\n",open3,"\n","\n",open4,"\n","\n","\n",open5,"\n","\n",open6, sep=""))
+}
+
+survey_merge <- function(X, Y, XYspecies.col, all.species){ #begin function
+  
+  base.df <- as.data.frame(all.species) #convert species vector into a data frame
+  base.df <- as.data.frame(sort(base.df[,1])) #places names in alphabetical order to accommodate later vectorization of names in same order (happens by default)
+  names(base.df) <- "species" #rename column
+  
+  #Merge X with base df to achieve uniform structure
+  X.base.merge <- merge(x = base.df, 
+                        y = X,
+                        by.x = "species",
+                        by.y =  XYspecies.col,
+                        all.x = TRUE,
+                        all.y = FALSE)
+  
+  X.base.merge[is.na(X.base.merge)] <- 0 #replace all NA's with 0's
+  
+  #NOTE THAT THE FOLLOWING LINE MAY NOT BE NECESSARY IN FUTURE DATA FRAMES!
+  X.base.merge <- X.base.merge[, !names(X.base.merge) %in% "common.name"] #removes superfluous common.name column if it is present
+  
+  #Merge Y with base df to achieve uniform structure
+  Y.base.merge <- merge(x = base.df, 
+                        y = Y,
+                        by.x = "species",
+                        by.y =  XYspecies.col,
+                        all.x = TRUE,
+                        all.y = FALSE)
+  
+  Y.base.merge[is.na(Y.base.merge)] <- 0 #replace all NA's with 0's
+  
+  #NOTE THAT THE FOLLOWING LINE MAY NOT BE NECESSARY IN FUTURE DATA FRAMES!
+  Y.base.merge <- Y.base.merge[, !names(Y.base.merge) %in% "common.name"] #removes superfluous common.name column if it is present
+  
+  
+  #Merge X and Y
+  X.Y.merge <- merge(x = X.base.merge,
+                     y = Y.base.merge,
+                     by = "species",
+                     all = TRUE)
+  
+  #Flip data frame to work with years as a column rather than row
+  X.Y.merge <- as.data.frame(t(X.Y.merge))
+  names(X.Y.merge) <- X.Y.merge[1,] #rename columns to be species names
+  X.Y.merge <- X.Y.merge[-1, ] #remove first row, which is just species names
+  X.Y.merge$year <- rownames(X.Y.merge) #add row name as a column
+  
+  #Clean year column to make surveys from the same years compatable
+  X.Y.merge$year <- sub(x = X.Y.merge$year,
+                        pattern = "*.x",
+                        replacement = "")
+  X.Y.merge$year <- sub(x = X.Y.merge$year,
+                        pattern = "*.y",
+                        replacement = "")
+  
+  data.split <- split(x = X.Y.merge, #what to split
+                      f = X.Y.merge$year) #split based on year
+  
+  process.list <- list() #create an empty list to fill
+  
+  for (i in 1:length(data.split)) { #begin loop
+    
+    temp.df <- as.data.frame(data.split[i]) #isolate the portion of the list we want to work with (data frame of obs)
+    
+    survey.year <- temp.df[1,ncol(temp.df)] #retain survey year
+    temp.df <- temp.df[,1:ncol(temp.df)-1]
+    
+    #Clean up how values are stored
+    temp.df <- as.data.frame(t(temp.df)) #flipping to work with numbers as columns
+    temp.df[,1] <- gsub(" ", "", temp.df[,1]) #removes spaces, if needed
+    temp.df[,1] <- as.numeric(temp.df[,1]) #convert values (col 1) to numeric
+    if(ncol(temp.df)>1) temp.df[,2] <- {temp.df[,2] <- gsub(" ", "", temp.df[,2])} #removes spaces, if needed
+    if(ncol(temp.df)>1) temp.df[,2] <- {as.numeric(temp.df[,2])} #convert values (col 2) to numeric, if necessary
+    temp.df <- as.data.frame(t(temp.df)) #restore back to original dimensions
+    
+    temp.spp.vector <- as.vector(names(temp.df)) #make vector of species names, which get messed up and need to be cleaned
+    temp.spp.vector <- substr(temp.spp.vector, 7, nchar(temp.spp.vector)) #remove year from spp name
+    names(temp.df) <- temp.spp.vector #rename each column to be the clean species name
+    
+    temp.df <- ifelse(nrow(temp.df)>1, 
+                      (as.data.frame(colSums(temp.df))),#creates a dataframe of total counts in the year (added across surveys)
+                      (as.data.frame(t(temp.df))))#flips present data into appropriate format
+    
+    temp.df <- unlist(temp.df)
+    temp.df <- as.data.frame(temp.df)
+    
+    names(temp.df) <- survey.year #renames the column with the year of the survey
+    row.names(temp.df) <- temp.spp.vector #renames rows with species names (last value in vector was "year", so was removed)
+    
+    process.list <- append(process.list, temp.df) #add outcome to existing (empty) data frame
+    
+  } #end loop
+  
+  X.Y.remerge <- as.data.frame(do.call("cbind", process.list)) #collapse the list into a single data frame
+  names(base.df) <- "species.name"
+  X.Y.remerge <- cbind(base.df, X.Y.remerge) #end function
+} #end function
+
+
+instructions_survey_merge <- function(){ #start instructions function
+  open1 <- "This function was originally built for to aid in analyzing the change of avian diversity over time. While they may serve other uses, please remember that they were not written with universal functionality in mind."
+  open2 <- "Before you begin, make sure your data is clean. Each row should be a unique species, and each column should be a year (unique to the perticular survey. e.g., two different surveys sampling the same year is okay.) "
+  open3 <- "Keep in mind that this function can only combine two surveys at once."
+  open4 <- "The following objects are required for functionality:"
+  open5 <- "X: A clean dataset where each row is a species and each column is a survey year. If you have >2 surveys, X should be the product of the previous survey merge."
+  open6 <- "Y: A clean dataset where each row is a species and each column is a survey year."
+  open7 <- "XYspecies.col: The name of the column which contains the species names in both X and Y. The columns must have the same name in both survey data sets."
+  open8 <- "all.species: A dataframe or vector of all possible species detected across survey years and across surveys. Consider rbinding all surveys and performing 'unique' on the specie column."
+  
+  message(paste("\n","\n",open1,"\n","\n",open2,"\n","\n",open3,"\n","\n","\n",open4,"\n","\n",open5,"\n","\n",open6,"\n","\n",open7,"\n","\n",open8, sep=""))
+}
+
+
+survey_collapse <- function(survey){
+  
+  temp.df <- as.data.frame(t(survey)) #flip data frame so we can work with year in column form
+  temp.names <- as.vector(temp.df[1,]) #save species names for later use
+  names(temp.df) <- temp.names #rename columns using value in first row
+  temp.df <- temp.df[-1, ] #remove first row since species names are now column names
+  
+  temp.df$year <- rownames(temp.df) #create a (temporary) column for survey year
+  temp.df$year <- sub(x = temp.df$year, #object to look within
+                      pattern = "X*", #Replace "X" followed by anything...
+                      replacement = "") #with nothing (aka erase the X)
+  
+  #Re-name survey year to convey survey period (on 5 year increments)
+  temp.df$year <- ifelse(substr(temp.df$year, 4,4) %in% c("0","1","2","3","4"), #test to see if the last digit in survey year is between 0-4
+                         paste(substr(temp.df$year, 0,3),"0",sep=""), #if yes, round year down to nearest decade
+                         paste(substr(temp.df$year, 0,3),"5",sep="")) #if no, round year to nearest 5-year period (e.g., 1915)
+  
+  data.split <- split(x = temp.df, #what to split
+                      f = temp.df$year) #split based on year
+  
+  survey.merge <- data.frame() #create empty data frame to add collapsed surveys to
+  
+  for (i in 1:length(data.split)) { #begin loop
+    
+    temp.df <- as.data.frame(data.split[i]) #isolate the portion of the list we want to work with (data frame of obs)
+    temp.df <-as.data.frame(t(temp.df)) #flip to work with each year as a column
+    
+    temp.df[,1] <- as.numeric(temp.df[,1]) #converting values to numeric for math
+    if(ncol(temp.df)>1){temp.df[,2] <- as.numeric(temp.df[,2])}
+    if(ncol(temp.df)>2){temp.df[,3] <- as.numeric(temp.df[,3])}
+    if(ncol(temp.df)>3){temp.df[,4] <- as.numeric(temp.df[,4])}
+    if(ncol(temp.df)>4){temp.df[,5] <- as.numeric(temp.df[,5])}
+    
+    temp.df <- as.data.frame(t(temp.df)) #flipping to allow for colsums
+    
+    survey.year <- temp.df[1,ncol(temp.df)] #retain survey year
+    
+    temp.df <- as.data.frame(colSums(temp.df[,])) #adding values across years within survey period
+    temp.df <- as.data.frame(t(temp.df)) #flipping back around to retain survey structure
+    
+    temp.df <- temp.df[,1:ncol(temp.df)-1] #getting rid of year column, which is now a sum of sampling years and useless
+    names(temp.df) <- temp.names
+    rownames(temp.df) <- survey.year
+    
+    
+    survey.merge <- rbind(survey.merge, temp.df)
+  } #end loop
+  
+  survey.merge
+} #end function
+
+
+instructions_survey_collapse <- function(){ #start instructions function
+  open1 <- "This function was originally built for to aid in analyzing the change of avian diversity over time. While they may serve other uses, please remember that they were not written with universal functionality in mind."
+  open2 <- "Before you begin, make sure your data is clean. Each row should be a unique species, and each column should be a year. Column names should contain numbers only (e.g., '1914', NOT 'X1914')"
+  open3 <- "The following objects are required for functionality:"
+  open4 <- "Survey: A clean dataset where each row is a species and each column is a survey year. This function will aggregate these individual surveys into five-year periods (e.g., 1900-1904, 1905-1909, etc.)"
+  
+  message(paste("\n","\n",open1,"\n","\n",open2,"\n","\n","\n",open3,"\n","\n",open4,sep=""))
+}
+
+process_sppDiv <- function(survey) { 
+  #Load in necessary libraries
+  if(!"vegan" %in% installed.packages()[,"Package"])  message("Installing required package 'vegan.'")#Does user have the package downloaded? If so move on, if not, download.
+  if(!"vegan" %in% installed.packages()[,"Package"])install.packages("vegan")
+  library(vegan) #calculates species diversity metrics
+  
+  temp.years <- as.data.frame(rownames(survey)) #saves years to be reused in construction of next dataframe
+  
+  problem.spp <- bird.data[colSums(survey) == 0] #identify species whose names are present in the dataset but thmeselves were not seen (likely marked as 'seen in the week, but not on the day')
+  problem.spp <- as.vector(names(problem.spp)) #make a vector of problem species names
+  
+  species <- as.vector(names(survey)) #saves species names to be reused in subsequent dataframes
+  species <- subset(species, !(species %in% problem.spp)) #removes species identified as problem species
+  
+  data.split <- split(survey, rownames(survey)) #split survey by row, such that each row is its own object in a list
+  
+  spp.div.df <- data.frame() #Create an empty data frame to fill
+  
+  for (i in 1:length(data.split)) {
+    
+    temp.df <- data.split[[i]] #isolate the working data frame (each row becomes its own df here)
+    
+    #Calculate species diversity metrics
+    temp.df <- data.frame(survey = rownames(temp.df),
+                          nDetections = rowSums(temp.df),
+                          sppRichness = sum(temp.df[1,] > 0),
+                          sppShannonDiv = diversity(temp.df, index = "shannon"),
+                          sppShannonEven = diversity(temp.df, index = "shannon") / log(sum(temp.df[1,] > 0)), #0 is no evenness, 1 is complete evenness
+                          sppSimpsonDiv = diversity(temp.df, index = "simpson"))
+    
+    spp.div.df <- rbind(spp.div.df, temp.df) #Adds output to existing (empty) data frame
+    
+  }# end for loop
+  
+  spp.div.df <<- spp.div.df #Saves to environment
+  message(paste("\n","The process is complete. The data frame (titled 'spp.div.df') is in your global environment.", sep=""))
+} #end function
+
+
+instructions_process_sppDiv <- function(){ #start instructions function
+  open1 <- "This function was originally built for to aid in analyzing the change of avian diversity over time. While they may serve other uses, please remember that they were not written with universal functionality in mind."
+  open2 <- "Before you begin, make sure your data is clean. Each row should be a unique survey or location, and each column should be a species. If two columns represent the same species (e.g., subspecies, species seperated by color morph, etc.), they will be counted as different species."
+  open3 <- "The following objects are required for functionality:"
+  open4 <- "Survey: A clean dataset where each row is a survey and each column is a species."
+  open5 <- "Produced petrics include:"
+  open6 <- "nDetections: Total number of observations for each survey"
+  open7 <- "sppRichness: Species richness"
+  open8 <- "sppShannonDiv: Shannon's Diversity Index ()"
+  open9 <- "sppShannonEven: Shannon's Evenness Index ()"
+  open10 <- "sppSimpsonDiv: Simpson's Diversity Index ()" 
+  
+  message(paste("\n","\n",open1,"\n","\n",open2,"\n","\n","\n",open3,"\n","\n",open4,"\n","\n",open5,"\n",open6,"\n",open7,"\n",open8,"\n",open9,"\n",open10,  sep=""))
+}
+
+
+impute_effort <- function(effort_df, imputed_field) { #begin function
+  
+  df <- effort_df[,c("Year", imputed_field)] #remove irrelevant columns so only survey year and imputed field remain
+  
+  df$imputedEffort <- NA #Create a column to fill with imputed efforts. 
+  
+  n.imputed <- vector() #Create an empty vector to keep track of how many values are imputed.
+  
+  #Loop to read through other data values and use them to estimate yearly effort for surveys where effort is unknown
+  for (i in 1:nrow(df)) { #begin loop
+    
+    #Command for if the data is NOT missing
+    if(!(is.na(df[i,imputed_field]))){ df[i,"imputedEffort"] <- as.numeric(df[i,imputed_field])} #If the effort for the first survey year is a number (that is, it is not NA), retain this value in the imputed column
+    
+    #Command for if the data IS missing
+    if(is.na(df[i,imputed_field])) { #begin command for surveys without effort values
+      
+      temp.df <- subset(df, !is.na(df[,imputed_field])) #Produce a temporary dataframe where all NA's are removed.
+      
+      possible.values <- as.vector(as.numeric(row.names(temp.df))) #Create a vector of rownames of tempdf, which allows us to isolate the row numbers of the nearest data-carrying neighbors of our missing value since row names here are the original row numbers in df.
+      
+      before.i <- subset(possible.values, i > possible.values) #Create a vector of names (numbers) of each row (survey) that is less than i (happened before year i) AND has an effort value
+      after.i <- subset(possible.values, i < possible.values) #Create a vector of names (numbers) of each row (survey) that is greater than i (happened after year i) AND has an effort value
+      
+      if(length(before.i) >= 1) contributing.values <- c(max(before.i),min(after.i)) #If there is at least one value before and after the missing value, use those two values to impute missing value (that is, if survey prior and after both have effort data, use those to impute the missing effort data of i)
+      if(length(before.i) < 1) contributing.values <- c(after.i[1:2]) #If there are no surveys with effort values before the missing value (e.g., the first row), use the two values immediately following it to impute missing value (that is, if the only existing effort data occurred after the survey in question (i), use those to impute the missing effort data of i)
+      if(length(after.i) < 1) contributing.values <- c(before.i[length(before.i)-1], before.i[length(before.i)]) #If there are no surveys with effort values after the missing value (e.g., the last row), use the two values immediately before it to impute missing value (that is, if the only existing effort data occurred before the survey in question (i), use those to impute the missing effort data of i)
+      
+      temp.df <- temp.df[row.names(temp.df) %in% contributing.values, ] #Truncates data frame of effort values to only the effort values identified as the appropriate values to contribute to imputation
+      
+      df[i, "imputedEffort"] <- round(mean(temp.df[, imputed_field])) #Insert the (rounded) average of the appropriate effort values as the imputed value for first row.
+      
+      n.imputed <- append(n.imputed, 1) #add a value to the empty vector to act as a tally for imputed values.
+    } #end command for surveys without effort values
+  } #end loop
+  
+  #Write message for end of function
+  end.note <- paste("The process is complete! A total of ", length(n.imputed), " values were imputed.", sep="")
+  message(end.note)
+  
+  df #placed here to tell R what to retain in global environment
+  
+} #End function
+
+
+instructions_impute_effort <- function(){ #start instructions function
+  open1 <- "This function was originally built for to aid in analyzing the change of avian diversity over time. While they may serve other uses, please remember that they were not written with universal functionality in mind."
+  open2 <- "Before you begin, make sure your data is clean. Each row should be a unique survey, and at least one column should reflect survey effort. If two columns represent different measures of effort, you must pick one."
+  open3 <- "The following objects are required for functionality:"
+  open4 <- "effort_df: Data frame in which each row is a survey and at least one column measures survey effort."
+  open5 <- "imputed_field: The name of the column (in quotes) that contains the measure of effort. If multiple exist, select one."
+  
+  
+  message(paste("\n","\n",open1,"\n","\n",open2,"\n","\n","\n",open3,"\n","\n",open4,"\n","\n",open5,  sep=""))
+}
+
+effort_collapse <- function(effort.df, city){
+  temp.df <- as.data.frame(effort.df) #flip data frame so we can work with year in column form
+  
+  #Re-name survey year to convey survey period (on 5 year increments)
+  temp.df$Year <- ifelse(substr(temp.df$Year, 4,4) %in% c("0","1","2","3","4"), #test to see if the last digit in survey year is between 0-4
+                         paste(substr(temp.df$Year, 0,3),"0",sep=""), #if yes, round year down to nearest decade
+                         paste(substr(temp.df$Year, 0,3),"5",sep="")) #if no, round year to nearest 5-year period (e.g., 1915)
+  
+  data.split <- split(x = temp.df, #what to split
+                      f = temp.df$Year) #split based on year
+  
+  effort.merge <- data.frame() #create empty data frame to add collapsed surveys to
+  
+  for (i in 1:length(data.split)) { #begin loop
+    
+    temp.df <- as.data.frame(data.split[i]) #isolate the portion of the list we want to work with (data frame of obs)
+    
+    temp.df[,1] <- as.numeric(temp.df[,1]) #converting values to numeric for math
+    if(ncol(temp.df)>1){temp.df[,2] <- as.numeric(temp.df[,2])}
+    if(ncol(temp.df)>2){temp.df[,3] <- as.numeric(temp.df[,3])}
+    if(ncol(temp.df)>3){temp.df[,4] <- as.numeric(temp.df[,4])}
+    if(ncol(temp.df)>4){temp.df[,5] <- as.numeric(temp.df[,5])}
+    
+    survey.name <- paste(city,temp.df[1,1],sep="") #retain survey year
+    
+    effort.sum <- sum(temp.df[,3]) #Add efforts from each year
+    
+    #Create new data frame with output
+    new.df <- data.frame(survey = survey.name,
+                         effort = as.numeric(effort.sum))
+    
+    effort.merge <- rbind(effort.merge, new.df)
+  } #end loop
+  
+  effort.merge
+} #end function
+
+
+instructions_effort_collapse<- function(){ #start instructions function
+  open1 <- "This function was originally built to combine survey efforts in instances where multiple surveys oporate simultaneously in the same city. While it may serve other uses, please remember that it was not written with universal functionality in mind."
+  open2 <- "The following objects are required for functionality:"
+  open3 <- "effort.df: A dataframe which has a column called 'Year'. This function specifically sums effort values in the third column - assumed to be number of observers. Each row is a survey year. "
+  open4 <- "city: Character string indicating the city, which is appended to the survey year to accomodate merging with other datasets in this analysis (e.g., 'PA')"
+  
+  message(paste("\n","\n",open1,"\n","\n","\n",open2,"\n","\n",open3,"\n","\n",open4, sep=""))
+}
+
+
+format_historicData <- function(df, year.col, metric.col, tMinus) { #begin function
+  
+  year.column <- which(colnames(df) %in% year.col) #Determine the column number that has the survey years
+  metric.column <- which(colnames(df) %in% metric.col) #Determine the column number that has the metric of interest
+  
+  all.columns <- colnames(df) #save column names
+  new.colname <- paste("Tm",tMinus,"_",metric.col, sep = "") #Create a new column name based on input values
+  all.columns <- append(all.columns, new.colname) #Add new column name to vector of existing column names
+  
+  df$temp.col <- NA #create a new empty column at the end of the dataframe
+  names(df) <- all.columns #rename columns (this has no effect on existing columns, but applies new name to newly created column)
+  
+  
+  
+  for(i in 1:length(df[,ncol(df)])) { #begin loop for plugging in historic metrics
+    
+    search.for <- as.numeric(df[i,year.column])-tMinus #Create a search year by subtracting the time difference from the current year
+    
+    row.number <- which(df[,year.column] == search.for) #Identify the row number that contains the search year, if it exists
+    row.number <- ifelse(length(row.number) == 0, NA, row.number) #In the event that there is no row that contains the search year, replace object 'row number' with NA
+    
+    if(is.na(row.number)) {df[i, ncol(df)] <- NA} #If there is no row that contains the search year, keep "NA" as the landscape metric
+    if(!is.na(row.number)) {df[i, ncol(df)] <- df[row.number, metric.column]} #If there IS a row that contains the search year, use the landscape metric from that year to replace the current value (NA)
+    
+  } #end loop for plugging in historic metrics
+  
+  df[,ncol(df)] <- as.numeric(df[,ncol(df)])
+  
+  n.imputed <- as.vector(NA) #Create an empty vector to record the number of values imputed
+  
+  for(i in 1:length(df[,ncol(df)])) { #begin loop for imputing missing landscape metrics
+    
+    if((as.numeric(df[i,year.column]) >= 1950) & is.na(df[i,ncol(df)])) { #if the year is greater than 1950 AND the landscape metric for the historic period is missing...
+      
+      temp.df <- df #create a temporary version of the dataframe
+      
+      rownames(temp.df) <- 1:nrow(temp.df)
+      
+      temp.df <- subset(temp.df, !is.na(df[,ncol(temp.df)])) #Produce a temporary dataframe where all NA's are removed.
+      
+      possible.values <- as.vector(row.names(temp.df)) #Create a vector of rownames of tempdf, which allows us to isolate the rows of the nearest data-carrying neighbors of our missing value since row names here are the original row numbers in df.
+      
+      before.i <- subset(possible.values, i > possible.values) #Create a vector of names (numbers) of each row (survey) that is less than i (happened before year i) AND has an effort value
+      after.i <- subset(possible.values, i < possible.values) #Create a vector of names (numbers) of each row (survey) that is greater than i (happened after year i) AND has an effort value
+      
+      if(length(before.i) >= 1 & length(after.i) >= 1) contributing.values <- c(max(before.i),min(after.i)) #If there is at least one value before and after the missing value, use those two values to impute missing value (that is, if survey prior and after both have data, use those to impute the missing data of i)
+      if(length(before.i) < 1) contributing.values <- c(after.i[1:2]) #If there are no surveys with values before the missing value (e.g., the first row), use the two values immediately following it to impute missing value (that is, if the only existing effort data occurred after the survey in question (i), use those to impute the missing data of i)
+      if(length(after.i) < 1) contributing.values <- c(before.i[length(before.i)-1], before.i[length(before.i)]) #If there are no surveys with values after the missing value (e.g., the last row), use the two values immediately before it to impute missing value (that is, if the only existing data occurred before the survey in question (i), use those to impute the missing data of i)
+      
+      temp.df <- temp.df[row.names(temp.df) %in% contributing.values, ] #Truncates data frame of values to only the values identified as the appropriate values to contribute to imputation
+      
+      df[i, ncol(df)] <- mean(temp.df[, ncol(temp.df)]) #Insert the average of the two landscape values as the imputed value.
+      
+      n.imputed <- append(n.imputed, 1) #Add a record to the vector keeping track of imputed values
+    } #end actual imputation loop
+  } #end loop for imputing missing landscape metrics
+  
+  #Writing end message
+  if(sum(sum(!is.na(n.imputed)) > 0)) {end.note <- paste("\n","Process complete. Be advised that ", sum(!is.na(n.imputed)), " records were imputed.", sep="")} #write end message for when there are imputed values
+  if(sum(!is.na(n.imputed)) == 0) {end.note <- paste("\n","Process complete. No imputations were necessary", sep="")} #write end message for when there were no imputed values
+  
+  message(end.note)
+  
+  manipulatedData <<- df #leave this here so R returns this manipulated dataframe
+  
+} #end function
+
+
+instructions_format_historicData <- function(){ #start instructions function
+  open1 <- "This function was originally built to manipulate historic data such that a additional columns can be built for a variable that expresses the variable in some previous time period (e.g., park area at t-minus 20, 30, etc.). While it may serve other uses, please remember that it was not written with universal functionality in mind."
+  open2 <- "The following objects are required for functionality:"
+  open3 <- "df: A dataframe which contains a variable that changes over time. Variables should be stored in columns and surveys in rows."
+  open4 <- "year.col: Character string indicating the name of the column that contains temporal data. That is, the column that indicates the year the data pertains to."
+  open5 <- "metric.col: Character string indicating the name of the column that contains the variable of interest (e.g., park area)"
+  open6 <- "tMinuseffort.df: Numeric value (in this case, years) to offset each piece of data by. For instance, if tMinuseffort.df=10, a new column will be made in which each row will contain the value given in metric.col from 10 years earlier."
+  
+  message(paste("\n","\n",open1,"\n","\n","\n",open2,"\n","\n",open3,"\n","\n",open4,"\n","\n",open5,"\n","\n",open6, sep=""))
+}
+
+process_census <- function(city.file, city.name, census.file){ #begin function
+  
+  #Trigger error message
+  if(!(grepl(".shp",city.file,ignore.case = TRUE))) stop("City shapefile (city.file) must be a valid file path to an existing polygon shapefile representing municipal boundary.") #Throws an error if city boundary is not filetype ".shp"
+  
+  #Load libraries
+  if (!require(sf)) message("Installing required package 'sf.'")
+  if (!require(sf)) install.packages('sf') #Does user have the package downloaded? If so move on, if not, download.
+  library(sf) #load library
+  
+  #Load data
+  municipal <- st_read(dsn=city.file, quiet = TRUE) #read in shapefile
+  municipal <- st_transform(municipal, crs = st_crs(5070)) #Change the coordinate reference system to Albers equal area conic (contiguous USA)
+  census <- read.csv(census.file) #read in census data as csv
+  
+  area <- st_area(municipal) # calculate area of city
+  area <- as.numeric(area*0.000001) #convert from square meters to square kilometers
+  
+  temp.df <- data.frame(survey = seq(1900,2020, by=5)) #create dataframe with survey years
+  
+  #Add census data to survey structure, leaving NA's for surveys not ending in '''0
+  temp.df <- merge(x=temp.df, 
+                   y=census,
+                   by.x = "survey",
+                   by.y = "Decade",
+                   all.x = TRUE) 
+  
+  temp.df$Pop.Est <- as.numeric(temp.df$Pop.Est) #make sure all numbers are stored as numbers, not characters
+  
+  loop.values <- as.vector(temp.df$Pop.Est) #turn column into a vector
+  
+  for(i in 1:length(loop.values)) { #begin loop
+    
+    if(is.na(loop.values[i])) {loop.values[i] <- mean(c(loop.values[i-1],loop.values[i+1]))} #if a value is NA, replace it with the mean of the value before and after it
+    
+  } #end loop
+  
+  temp.df$Pop.Est <- loop.values #replace existing census values with imputed vector
+  
+  temp.df$Pop.Dens <- temp.df$Pop.Est/area
+  
+  temp.df$survey <- paste(city.name, temp.df$survey, sep="") #add city name to survey
+  
+  temp.df #leaving this here to tell R what to keep
+  
+} #end function
+
+instructions_process_census <- function(){ #start instructions function
+  open1 <- "This function was originally built to manipulate census data to both format data to ensure it can merge with other datasets, but also to convert population to population density and impute values for the 5-year periods between surveys (e.g., impute population density in 1925 from the 1920 and 1930 censuses). While it may serve other uses, please remember that it was not written with universal functionality in mind."
+  open2 <- "The following objects are required for functionality:"
+  open3 <- "city.file: A shapefile (polygon) of the study area of interest - assumed to be a city footprint. This is used to calculate population density."
+  open4 <- "city.name: Character string indicating the city, which is appended to the survey year to accomodate merging with other datasets in this analysis (e.g., 'PA')."
+  open5 <- "census.file: A data frame whose first column is 'Decade' and second column is 'Pop.Est'. Both columns are numeric, and 'Decade' contains the full year (e.g., 1960, 1970, etc.). 'Pop.Est' contains the estimated population size from the U.S. Census Bureau."
+  
+  message(paste("\n","\n",open1,"\n","\n","\n",open2,"\n","\n",open3,"\n","\n",open4,"\n","\n",open5, sep=""))
+}
+
+
+process_functGroups <- function(x, traitCol) { #begin function
+  
+  traitcolNum <- which(names(x) %in% traitCol) #determine which column number is the trait column
+  split.df <- split(x, x[,traitcolNum]) #split the data frame by the trait column
+  
+  inner.process <- function(y) { #begin sub-function
+    
+    trait.group <- y[1,traitcolNum] #store trait group
+    survey.names <- as.vector(names(y)) #store column names
+    survey.names <- survey.names[which((substr(survey.names,0,2)) %in% c("DC","PA","MN"))] #remove values that are not surveys
+    
+    y <- y[,which((substr(names(y),0,2)) %in% c("DC","PA","MN"))] #remove non-numeric columns
+    y <- as.data.frame(t(y)) #transpose so each row is a survey and each column a species
+    
+    y$sum <- rowSums(y) #sum the observations of trait class in each survey
+    y <- as.data.frame(y[,which(names(y) %in% "sum")]) #remove non-numeric columns
+    
+    row.names(y) <- survey.names #rename survey (rows)
+    names(y) <- trait.group #rename trait group (columns)
+    
+    y #leaving here for R to grab
+    
+  } #end sub-function
+  
+  proccessed.data <- lapply(split.df, inner.process) #apply funciton to split.list
+  proccessed.data <- do.call("cbind", proccessed.data) #collapse output into single object
+  
+} #end function
+
+
+instructions_process_functGroups <- function(){ #start instructions function
+  open1 <- "This function was originally built to manipulate bird observations and functional group data to achieve surveys by functional groups, not species. While it may serve other uses, please remember that it was not written with universal functionality in mind."
+  open2 <- "The following objects are required for functionality:"
+  open3 <- "x: A data frame whose rows are species and whose columns are surveys. One column must contain (character/factor) data regarding the functional group the bird belongs to. The remaining data should be numbers of observations per survey."
+  open4 <- "traitCol: Character string indicating the column which contains the functional group data (e.g., foraging group)."
+  
+  message(paste("\n","\n",open1,"\n","\n","\n",open2,"\n","\n",open3,"\n","\n",open4, sep=""))
+} 
+
+format_functional <- function(x) {#begin function to re-arrange functional data
+  
+  survey.col <- rownames(x) #create vector of rownames
+  
+  group.name <- names(x)[1] #create object called group.name based on the value of x
+  
+  #Create a group name based on the variable at hand (detect variable from column names)
+  if(grepl(x=group.name,
+           pattern = "diet")) group.name <- {"diet_class"}
+  if(grepl(x=group.name,
+           pattern = "forage")) group.name <- {"forage_class"}
+  if(grepl(x=group.name,
+           pattern = "mass")) group.name <- {"mass_class"}
+  if(grepl(x=group.name,
+           pattern = "range")) group.name <- {"range_class"}
+  if(grepl(x=group.name,
+           pattern = "clutch")) group.name <- {"clutch_class"}
+  
+  #split data frame into list of single-rowed data frames (split function was not cooperating so loop was used instead)
+  x.df <- data.frame() #create an empty dataframe
+  
+  for(i in 1:ncol(x)) {#begin loop to separate dataframe by column
+    
+    temp.df <- as.data.frame(x[,i]) #isolate observations
+    
+    temp.df$survey <- survey.col #add survey column back to the data
+    
+    temp.df$funct.trait <- group.name #assign group.name to new column called funct.trait
+    
+    local.name <- names(x[i]) #determine the trait class according to original column name
+    
+    #Assign observation to a specific functional group class
+    trait.group <- ifelse(grepl("average",local.name), "1average",
+                          ifelse(grepl("small",local.name), "2small",
+                                 ifelse(grepl("large",local.name), "3large",
+                                        ifelse(grepl("specialist",local.name), "2small",
+                                               ifelse(grepl("generalist",local.name), "3large","ERROR")))))
+    
+    temp.df$funct.group <- trait.group #Assign trait group to column
+    
+    x.df <- rbind(x.df, temp.df) #combine output to existing (empty) data frame
+    
+  } #end loop
+  
+  names(x.df) <- c("n.obs","survey","funct.trait","funct.group") #rename
+  x.df #leaving here for R to pick up
+  
+}#end format_functional function
+
+instructions_format_functional <- function(){ #start instructions function
+  open1 <- "This function was originally built to manipulate functional group observation data to achieve each row as a functional group observation specific to a survey. While it may serve other uses, please remember that it was not written with universal functionality in mind."
+  open2 <- "The following objects are required for functionality:"
+  open3 <- "x: A data frame whose rows are surveys and whose columns are observations of specific functional groups."
+  
+  message(paste("\n","\n",open1,"\n","\n","\n",open2,"\n","\n",open3, sep=""))
+} 
