@@ -1,0 +1,80 @@
+common.name,species.name,1913,1919,1920,1921,1922,1923,1924,1925,1926,1927,1928,1930,1931,1932,1934,1935,1936,1937,1939,1940,1944,1946,1949,1950,1952,1953,1955,1956,1957
+Common Redpoll,Acanthis flammea,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,17,0,26,0,2
+redpoll sp.,Acanthis sp.,0,18,1,0,0,0,0,200,0,4,0,0,0,0,0,0,2,0,12,0,6,22,0,0,0,0,0,0,0
+Northern Goshawk (American),Accipiter gentilis atricapillus/laingi,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0
+Sharp-shinned Hawk,Accipiter striatus,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0
+hawk sp.,Accipitridae sp.,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Red-winged Blackbird,Agelaius phoeniceus,0,0,0,0,0,0,0,0,0,0,0,0,0,0,60,11,0,0,14,1,116,0,0,11,0,12,2,0,7
+kingfisher sp.,Alcedinidae sp.,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0
+Mallard,Anas platyrhynchos,0,0,0,0,0,0,0,0,0,0,0,3,5,0,9,0,1,0,162,127,0,134,0,4,17,205,5,0,1
+American Black Duck,Anas rubripes,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,15,0,8,1,0,0
+Gadwall,Anas strepera,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,0
+Ring-necked Duck,Aythya collaris,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,124,0,0,0,0,0
+Greater/Lesser Scaup,Aythya marila/affinis,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0
+Tufted Titmouse,Baeolophus bicolor,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0
+Cedar Waxwing,Bombycilla cedrorum,2,0,0,0,0,0,0,0,12,0,3,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0
+Bohemian Waxwing,Bombycilla garrulus,0,0,0,44,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Great Horned Owl,Bubo virginianus,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,1,1,0,0,0,0,0,0,0
+Common Goldeneye,Bucephala clangula,0,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,20,0,0,0,350,0,0,0,0,0,0
+Common/Barrow's Goldeneye,Bucephala clangula/islandica,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Red-tailed Hawk,Buteo jamaicensis,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0
+Lapland Longspur,Calcarius lapponicus,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,1,0,2,0,0,0,0,0,0,0,0
+Northern Cardinal,Cardinalis cardinalis,0,0,0,0,0,0,0,0,0,0,2,0,0,1,1,3,3,5,8,1,13,6,10,5,9,8,4,2,2
+Brown Creeper,Certhia americana,1,1,3,0,2,3,0,3,0,4,1,0,1,1,0,1,6,3,3,6,12,5,3,2,6,6,0,0,2
+Northern Harrier,Circus cyaneus,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0
+Northern Flicker,Colaptes auratus,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Northern Flicker (Yellow-shafted),Colaptes auratus auratus/luteus,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0
+Northern Bobwhite,Colinus virginianus,0,0,0,0,0,0,0,0,2,0,22,0,0,4,0,0,0,0,8,0,0,0,0,0,0,0,0,0,0
+American Crow,Corvus brachyrhynchos,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,1,18,6,11,0,9
+crow sp.,Corvus sp. (crow sp.),2,0,0,0,4,2,0,0,0,0,1,0,4,8,0,0,0,0,3,5,0,0,0,0,0,0,0,0,0
+Blue Jay,Cyanocitta cristata,3,11,6,19,11,21,13,17,8,19,15,5,14,17,15,8,30,4,22,2,19,5,72,8,18,10,9,3,8
+Pileated Woodpecker,Dryocopus pileatus,0,0,0,0,0,0,0,0,2,0,1,0,0,1,0,0,0,1,0,0,0,1,2,2,1,0,1,0,0
+sparrow sp.,Emberizidae sp. (sparrow sp.),0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,78,0,0,0,0,0,0,0,0,0,0
+Horned Lark,Eremophila alpestris,0,0,0,0,0,0,0,0,0,0,0,0,3,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Rusty Blackbird,Euphagus carolinus,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,0,0,0,0,13,0,0,0,0,0,6,1,0
+Brewer's Blackbird,Euphagus cyanocephalus,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,5,0,0,0,0,0,0,0,4,0,2,0,0,0
+American Kestrel,Falco sparverius,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
+American Coot,Fulica americana,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0
+Wilson's/Common Snipe,Gallinago delicata/gallinago,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,14,5,3,1,0,2,0,1,0,0,2,0,0
+Common Yellowthroat,Geothlypis trichas,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Purple Finch,Haemorhous purpureus,0,6,0,0,0,0,0,3,0,16,3,0,0,1,0,2,16,0,1,0,0,0,0,0,1,2,9,0,2
+blackbird sp.,Icteridae sp.,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0
+Dark-eyed Junco (Slate-colored),Junco hyemalis hyemalis/carolinensis,0,15,0,0,0,3,5,10,6,9,1,0,1,9,5,29,3,7,0,7,46,27,25,44,46,19,31,11,6
+Northern Shrike,Lanius excubitor,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,1,0,0,0
+Herring Gull,Larus argentatus,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,12,0,0,0,0,0,0,0,0,0,0
+Ring-billed Gull,Larus delawarensis,0,0,0,0,0,27,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Hooded Merganser,Lophodytes cucullatus,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0,0,0,0,0,0,0
+White-winged Crossbill,Loxia leucoptera,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,11
+Belted Kingfisher,Megaceryle alcyon,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0
+screech-owl sp.,Megascops sp.,0,0,1,0,0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0
+Red-bellied Woodpecker,Melanerpes carolinus,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,5,3,1,1,0,1,1,0,0
+Red-headed Woodpecker,Melanerpes erythrocephalus,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,3,0,0,0,0,0,0
+Swamp Sparrow,Melospiza georgiana,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Song Sparrow,Melospiza melodia,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0
+Red-breasted Merganser,Mergus serrator,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Northern Mockingbird,Mimus polyglottos,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0
+new world quail sp.,Odontophoridae sp.,0,0,0,14,0,10,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+House Sparrow,Passer domesticus,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,200,300,1160,400,1235,128,129,400,400,217,153
+Double-crested Cormorant,Phalacrocorax auritus,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0
+Ring-necked Pheasant,Phasianus colchicus,0,0,0,0,0,0,0,13,3,3,6,2,42,282,67,24,16,29,10,48,31,10,80,0,78,3,46,2,6
+Downy Woodpecker,Picoides pubescens,1,4,4,4,7,7,7,6,1,5,14,3,10,5,5,4,6,18,18,6,14,3,25,11,17,17,3,0,5
+Hairy Woodpecker,Picoides villosus,0,3,8,4,3,4,5,1,1,9,1,3,2,4,0,3,3,5,4,3,9,2,12,3,9,4,1,0,2
+Pine Grosbeak,Pinicola enucleator,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0
+Snow Bunting,Plectrophenax nivalis,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,0,50,0
+Pied-billed Grebe,Podilymbus podiceps,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0
+Black-capped Chickadee,Poecile atricapillus,0,11,2,3,0,2,1,18,6,39,25,26,16,16,10,9,5,3,0,16,58,53,124,27,64,38,18,5,19
+chickadee sp.,Poecile sp.,5,0,2,0,5,0,0,0,8,0,3,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,0
+Common Grackle (Purple),Quiscalus quiscula quiscula/stonei,0,0,0,0,0,0,0,0,0,0,0,0,0,2,4,0,0,0,0,0,3,0,0,0,0,2,0,0,0
+Golden-crowned Kinglet,Regulus satrapa,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,2,7,0,0,13,2,0,0,0
+bluebird sp.,Sialia sp.,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Red-breasted Nuthatch,Sitta canadensis,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,8
+White-breasted Nuthatch,Sitta carolinensis,2,15,10,4,5,22,11,9,5,23,3,1,15,16,8,6,18,11,16,11,18,18,43,15,29,16,7,1,4
+Pine Siskin,Spinus pinus,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,3,0,0,0,2
+Spinus sp. (goldfinch sp.),Spinus sp. (goldfinch sp.),0,0,0,0,12,0,0,1,0,0,4,0,0,1,0,40,0,0,0,0,33,12,0,0,0,0,0,0,0
+American Goldfinch,Spinus tristis,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,17,2,5,2,11,0,3
+American Tree Sparrow,Spizelloides arborea,16,3,5,0,3,0,4,100,0,40,11,0,55,45,17,54,12,70,180,17,474,87,63,20,0,270,213,7,5
+Barred Owl,Strix varia,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0
+Western/Eastern Meadowlark,Sturnella neglecta/magna,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+European Starling,Sturnus vulgaris,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,35,66,401,8,20,15,11,81,26,50,50
+American Robin,Turdus migratorius,0,1,0,0,0,0,2,0,0,0,1,0,1,2,0,1,0,1,0,1,2,0,0,0,2,0,1,0,1
+Yellow-headed Blackbird,Xanthocephalus xanthocephalus,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0
