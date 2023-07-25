@@ -1,0 +1,61 @@
+# Description of clean data
+
+### DATA.complete
+**DATA.complete** is structured so each row is a city-specific survey period and each column is a value. Variables are scaled to have a mean of zero and standard deviation of one. Columns include:
+  - survey: Unique survey identifier consisting of a two-letter abreviation of the city (DC = District of Columbia, MD = Minneapolis, PA = Pittsburgh)
+  - nDetections: Cumulative number (integer) of detections recorded regardless of species *not used in analysis*
+  - sppRichness: Cumulative number (integer) of unique species observed
+  - sppShannonDiv: Shannon diversity index (continuous) based on species richness and abundance
+  - sppShannonEven: Shannon evenness index (continuous) based on species richness and abudance *not used in analysis*
+  - sppSimpsonDiv: Simpson diversiy index (continuous) based on species richness and abudance *not used in analysis*
+  - funRich: Functional richness (continuous) based on 3d trait space calculations using dietary breadth, foraging breadth, body mass, home range size, and clutch size
+  - funDiverg: Functional diversity (continuous) based on 3d trait space calculations using dietary breadth, foraging breadth, body mass, home range size, and clutch size
+  - funEve: Functional evenness (continuous) based on 3d trait space calculations using dietary breadth, foraging breadth, body mass, home range size, and clutch size *not used in analysis*
+  - city: Two-letter abreviation of the city (DC = District of Columbia, MD = Minneapolis, PA = Pittsburgh)
+  - year: Scaled year that the survey took place
+  - prcnt_park_area: Scaled proportion of the city comprised of green space
+  - park_EIratio: Scaled mean edge-interior ratio of green space (calcualted as if streets did not bisect otherwise continuous parks)
+  - park_clumpy: Scaled clumpiness index of greenspace
+  - effort: Scaled cumulative number of observers in the survey
+  - Pop.Dens: Scaled human population density based on current administrative boundaries
+  - regional.C: Scaled mean winter temperature based on weather stations within 50 km of each city center
+  - average forage: Cumulative number (integer) of detections of species whose foraging breadth value was within 1 standard deviation of the mean foraging breadth value
+  - forage generalist: Cumulative number (integer) of detections of species whose foraging breadth value was 1 standard deviation greater than the mean foraging breadth value
+  - forage specialist: Cumulative number (integer) of detections of species whose foraging breadth value was 1 standard deviation less than the mean foraging breadth value
+  - average diet: Cumulative number (integer) of detections of species whose dietary breadth value was within 1 standard deviation of the mean dietary breadth value
+  - diet generalist: Cumulative number (integer) of detections of species whose dietary breadth value was 1 standard deviation greater than the mean foraging breadth value
+  - diet specialist: Cumulative number (integer) of detections of species whose dietary breadth value was 1 standard deviation less than the mean foraging breadth value
+  - average clutch: Cumulative number (integer) of detections of species whose clutch size was within 1 standard deviation of the mean clutch size
+  - large clutch: Cumulative number (integer) of detections of species whose clutch size was 1 standard deviation greater than the mean clutch size
+  - small clutch: Cumulative number (integer) of detections of species whose clutch size was 1 standard deviation less than the mean clutch size
+  - average mass: Cumulative number (integer) of detections of species whose body mass was within 1 standard deviation of the mean body mass
+  - large mass: Cumulative number (integer) of detections of species whose body mass was 1 standard deviation greater than the mean body mass
+  - average range: Cumulative number (integer) of detections of species whose home range size was within 1 standard deviation of the mean home range size
+  - large range: Cumulative number (integer) of detections of species whose home range size was 1 standard deviation greater than the mean home range size
+  - small range: Cumulative number (integer) of detections of species whose home range was 1 standard deviation less than the mean home range size
+
+
+### backtrans.vals
+**backtrans.vals** is structured so each row is a city-specific parameter and each column is a value. These values can be used to back-transform the scaled values in **DATA.complete** to their original units. Local refers to the value within the city, while global refers to the value across the entire dataset. Values were standardized using the local mean but global standard deviation.
+
+
+### DATA.species.obs
+**DATA.species.obs** is structured so each row is a true survey (not collapsed into 5 year periods, as it is in analysis), and each column is a species present in the datset. Cells represent the number (integer) of observations of each species in each survey. Zeros are considered true zeros.
+
+
+### DATA.traits.csv
+**DATA.traits.csv** is structured so each row is a species and each column is a scaled (mean = 0, SD = 1) trait value. Species with values greater than one standard deviation from the mean value (that is, trait values less than -1 or greater than 1) are assigned to the 'large' or 'small' groups. Numeric values are followed by factor-level (character) descriptions of the species' functional group. The last column combines all factor-level groups to illustrate a categorical ecological niche.
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+  
