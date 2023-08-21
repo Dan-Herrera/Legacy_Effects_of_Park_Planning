@@ -618,7 +618,7 @@ impute_effort <- function(effort_df, imputed_field) { #begin function
   
   df #placed here to tell R what to retain in global environment
   
-} #End function
+} #end function
 
 
 instructions_impute_effort <- function(){ #start instructions function
@@ -679,85 +679,6 @@ instructions_effort_collapse<- function(){ #start instructions function
   message(paste("\n","\n",open1,"\n","\n","\n",open2,"\n","\n",open3,"\n","\n",open4, sep=""))
 }
 
-
-format_historicData <- function(df, year.col, metric.col, tMinus) { #begin function
-  
-  year.column <- which(colnames(df) %in% year.col) #Determine the column number that has the survey years
-  metric.column <- which(colnames(df) %in% metric.col) #Determine the column number that has the metric of interest
-  
-  all.columns <- colnames(df) #save column names
-  new.colname <- paste("Tm",tMinus,"_",metric.col, sep = "") #Create a new column name based on input values
-  all.columns <- append(all.columns, new.colname) #Add new column name to vector of existing column names
-  
-  df$temp.col <- NA #create a new empty column at the end of the dataframe
-  names(df) <- all.columns #rename columns (this has no effect on existing columns, but applies new name to newly created column)
-  
-  
-  
-  for(i in 1:length(df[,ncol(df)])) { #begin loop for plugging in historic metrics
-    
-    search.for <- as.numeric(df[i,year.column])-tMinus #Create a search year by subtracting the time difference from the current year
-    
-    row.number <- which(df[,year.column] == search.for) #Identify the row number that contains the search year, if it exists
-    row.number <- ifelse(length(row.number) == 0, NA, row.number) #In the event that there is no row that contains the search year, replace object 'row number' with NA
-    
-    if(is.na(row.number)) {df[i, ncol(df)] <- NA} #If there is no row that contains the search year, keep "NA" as the landscape metric
-    if(!is.na(row.number)) {df[i, ncol(df)] <- df[row.number, metric.column]} #If there IS a row that contains the search year, use the landscape metric from that year to replace the current value (NA)
-    
-  } #end loop for plugging in historic metrics
-  
-  df[,ncol(df)] <- as.numeric(df[,ncol(df)])
-  
-  n.imputed <- as.vector(NA) #Create an empty vector to record the number of values imputed
-  
-  for(i in 1:length(df[,ncol(df)])) { #begin loop for imputing missing landscape metrics
-    
-    if((as.numeric(df[i,year.column]) >= 1950) & is.na(df[i,ncol(df)])) { #if the year is greater than 1950 AND the landscape metric for the historic period is missing...
-      
-      temp.df <- df #create a temporary version of the dataframe
-      
-      rownames(temp.df) <- 1:nrow(temp.df)
-      
-      temp.df <- subset(temp.df, !is.na(df[,ncol(temp.df)])) #Produce a temporary dataframe where all NA's are removed.
-      
-      possible.values <- as.vector(row.names(temp.df)) #Create a vector of rownames of tempdf, which allows us to isolate the rows of the nearest data-carrying neighbors of our missing value since row names here are the original row numbers in df.
-      
-      before.i <- subset(possible.values, i > possible.values) #Create a vector of names (numbers) of each row (survey) that is less than i (happened before year i) AND has an effort value
-      after.i <- subset(possible.values, i < possible.values) #Create a vector of names (numbers) of each row (survey) that is greater than i (happened after year i) AND has an effort value
-      
-      if(length(before.i) >= 1 & length(after.i) >= 1) contributing.values <- c(max(before.i),min(after.i)) #If there is at least one value before and after the missing value, use those two values to impute missing value (that is, if survey prior and after both have data, use those to impute the missing data of i)
-      if(length(before.i) < 1) contributing.values <- c(after.i[1:2]) #If there are no surveys with values before the missing value (e.g., the first row), use the two values immediately following it to impute missing value (that is, if the only existing effort data occurred after the survey in question (i), use those to impute the missing data of i)
-      if(length(after.i) < 1) contributing.values <- c(before.i[length(before.i)-1], before.i[length(before.i)]) #If there are no surveys with values after the missing value (e.g., the last row), use the two values immediately before it to impute missing value (that is, if the only existing data occurred before the survey in question (i), use those to impute the missing data of i)
-      
-      temp.df <- temp.df[row.names(temp.df) %in% contributing.values, ] #Truncates data frame of values to only the values identified as the appropriate values to contribute to imputation
-      
-      df[i, ncol(df)] <- mean(temp.df[, ncol(temp.df)]) #Insert the average of the two landscape values as the imputed value.
-      
-      n.imputed <- append(n.imputed, 1) #Add a record to the vector keeping track of imputed values
-    } #end actual imputation loop
-  } #end loop for imputing missing landscape metrics
-  
-  #Writing end message
-  if(sum(sum(!is.na(n.imputed)) > 0)) {end.note <- paste("\n","Process complete. Be advised that ", sum(!is.na(n.imputed)), " records were imputed.", sep="")} #write end message for when there are imputed values
-  if(sum(!is.na(n.imputed)) == 0) {end.note <- paste("\n","Process complete. No imputations were necessary", sep="")} #write end message for when there were no imputed values
-  
-  message(end.note)
-  
-  manipulatedData <<- df #leave this here so R returns this manipulated dataframe
-  
-} #end function
-
-
-instructions_format_historicData <- function(){ #start instructions function
-  open1 <- "This function was originally built to manipulate historic data such that a additional columns can be built for a variable that expresses the variable in some previous time period (e.g., park area at t-minus 20, 30, etc.). While it may serve other uses, please remember that it was not written with universal functionality in mind."
-  open2 <- "The following objects are required for functionality:"
-  open3 <- "df: A dataframe which contains a variable that changes over time. Variables should be stored in columns and surveys in rows."
-  open4 <- "year.col: Character string indicating the name of the column that contains temporal data. That is, the column that indicates the year the data pertains to."
-  open5 <- "metric.col: Character string indicating the name of the column that contains the variable of interest (e.g., park area)"
-  open6 <- "tMinuseffort.df: Numeric value (in this case, years) to offset each piece of data by. For instance, if tMinuseffort.df=10, a new column will be made in which each row will contain the value given in metric.col from 10 years earlier."
-  
-  message(paste("\n","\n",open1,"\n","\n","\n",open2,"\n","\n",open3,"\n","\n",open4,"\n","\n",open5,"\n","\n",open6, sep=""))
-}
 
 process_census <- function(city.file, city.name, census.file){ #begin function
   
