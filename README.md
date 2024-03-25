@@ -2,8 +2,7 @@
 
 ![v1 graphicalAbstract (1)](https://github.com/Dan-Herrera/Legacy_Effects_of_Park_Planning/assets/66024392/c38d56a6-33cc-4814-be88-f6fcff876210)
 
-
-*citation information upon publication*
+Herrera DJ, Fidino M, Luther D, Mullinax JM, Gallo T. 2024. Historical park planning is associated with modern-day patterns of bird diversity in cities. *Landscape and Urban Planning* [VOLUME] ([ISSUE]): [PAGES]. [DOI]
 
 --- 
 Code for data cleaning, data formatting, and analysis can be found within the **scripts** folder.
