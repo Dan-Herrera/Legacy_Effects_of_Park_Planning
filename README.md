@@ -1,6 +1,7 @@
-**Legacy Effects of Park Planning**
+# Historical park planning is associated with modern-day patterns of bird diversity in cities (Herrera, et al. 2024)
 
-*abstract upon publication*
+![v1 graphicalAbstract (1)](https://github.com/Dan-Herrera/Legacy_Effects_of_Park_Planning/assets/66024392/c38d56a6-33cc-4814-be88-f6fcff876210)
+
 
 *citation information upon publication*
 
@@ -36,7 +37,7 @@ instructions_process_greenspace() #call instructions for a particular function
 One additional function exists which describes each of the landscape metrics calculated within the *process_greenspace* script, called *define_landscape_metrics*, which is used similar to to any of the instuctions functions.
 
 
-I cannot legally publish the raw maps that were used to create the historic park shapefiles, as some are still protected by copyright law. If you need to obtain the original maps, please refer to the Supplimental Material 1 (on journal website) for a list of maps and their digital or physical location. If you use the historic green space data compiled for this project in a future analysis, I recomend using the data as a raster rather than a polygon.
+I cannot legally publish the raw maps that were used to create the historic park shapefiles, as some are still protected by copyright law. If you need to obtain the original maps, please refer to the Supplimental Material 2 (on journal website) for a list of maps and their digital or physical location. If you use the historic green space data compiled for this project in a future analysis, I recomend using the data as a raster rather than a polygon.
 
 ---
 *Direct correspondence to herrerawildlife@gmail.com*
